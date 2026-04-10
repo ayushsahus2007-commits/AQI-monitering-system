@@ -318,12 +318,12 @@ def build_category_distribution(summary_df: pd.DataFrame):
     dist_df = summary_df.copy()
     dist_df["Category"] = dist_df["AQI"].apply(get_aqi_category)
     ordered_categories = ["Good", "Satisfactory", "Moderate", "Poor", "Very Poor", "Severe"]
-    counts = (
-        dist_df["Category"]
-        .value_counts()
-        .reindex(ordered_categories, fill_value=0)
-        .reset_index()
-        .rename(columns={"index": "Category", "Category": "Count"})
+    distribution = dist_df["Category"].value_counts().reindex(ordered_categories, fill_value=0)
+    counts = pd.DataFrame(
+        {
+            "Category": distribution.index.tolist(),
+            "Count": distribution.values.tolist(),
+        }
     )
 
     fig, ax = plt.subplots(figsize=(7.4, 4.2))
