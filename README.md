@@ -1,14 +1,17 @@
-# Air Quality Index (AQI) Monitoring System v2
+# Air Quality Index (AQI) Monitoring System
 
-An upgraded machine learning dashboard that predicts Air Quality Index (AQI), benchmarks city pollution trends, and simulates pollutant-reduction scenarios for final project review demonstrations.
+A machine learning dashboard that predicts Air Quality Index (AQI), benchmarks city pollution trends, and simulates pollutant-reduction scenarios for practical decision support.
 
-## What Is New In v2
+## System Highlights
 
 - Redesigned Streamlit dashboard with a cleaner review-ready interface
+- Interactive hover-enabled charts for richer exploration
 - City intelligence section with AQI rank, year-over-year change, and same-year leaderboard
 - Interactive prediction lab with live pollutant inputs
 - Prediction confidence band using Random Forest ensemble spread
 - Mitigation simulator to estimate AQI improvement after reducing major pollutants
+- Practical daily exposure planner for activity-based risk guidance
+- 2025 watchlist for city-level intervention prioritization
 - Model analytics section with RMSE, R², feature importance, and pollutant correlation views
 - Refactored AQI utility layer for cleaner reusable logic
 
@@ -21,6 +24,12 @@ This project uses historical pollutant data from Indian cities to:
 - Provide health advisory guidance
 - Compare pollution trends across cities and years
 - Support decision-making through analytics and scenario testing
+
+## Data Coverage
+
+- Historical source coverage: 2015-2020
+- Extended project coverage in app dataset: 2015-2025
+- The years 2021-2025 are projected using city-wise pollutant trend modeling and model-based AQI estimation for analysis and planning demonstrations.
 
 ## Core Features
 
@@ -44,7 +53,12 @@ This project uses historical pollutant data from Indian cities to:
 - Estimate how much AQI improves after intervention
 - Identify the strongest pollutant target for action
 
-### 4. Model Analytics
+### 4. Practical Exposure Planner
+- Select activity type and expected outdoor duration
+- Account for sensitive groups and mask usage
+- Get actionable risk-level guidance for daily planning
+
+### 5. Model Analytics
 - Benchmark Random Forest performance on train-test split
 - View feature importance scores
 - Inspect pollutant correlation with AQI
@@ -130,6 +144,7 @@ If you want strong presentation points for viva or project review, focus on thes
 
 - The app is no longer only a predictor; it now behaves like a decision-support dashboard.
 - The system combines forecasting, benchmarking, and mitigation analysis in one interface.
+- The planner translates AQI into practical daily decisions, not just charts.
 - Confidence range adds transparency to the machine learning prediction.
 - Feature importance and correlation plots help explain why the model behaves the way it does.
 - Scenario simulation makes the project more practical for environmental planning discussions.

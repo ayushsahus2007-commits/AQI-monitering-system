@@ -2,14 +2,14 @@ import os
 import sys
 import warnings
 
+import altair as alt
 import joblib
-import matplotlib.pyplot as plt
 import pandas as pd
 import streamlit as st
 from sklearn.exceptions import InconsistentVersionWarning
 
 st.set_page_config(
-    page_title="AQI Monitoring System v2",
+    page_title="AQI Monitoring System",
     page_icon="🌿",
     layout="wide",
     initial_sidebar_state="expanded",
@@ -71,9 +71,10 @@ def inject_styles():
             }
             .stApp {
                 background:
-                    radial-gradient(circle at top left, rgba(199, 109, 60, 0.10), transparent 26%),
-                    radial-gradient(circle at top right, rgba(51, 92, 75, 0.14), transparent 24%),
-                    linear-gradient(180deg, #fcf7ef 0%, #f7f1e6 100%);
+                    radial-gradient(circle at 14% 2%, rgba(231, 128, 71, 0.23), transparent 28%),
+                    radial-gradient(circle at 88% 6%, rgba(51, 92, 75, 0.22), transparent 30%),
+                    radial-gradient(circle at 50% 120%, rgba(80, 123, 103, 0.13), transparent 45%),
+                    linear-gradient(180deg, #fcf7ef 0%, #f5ede0 100%);
                 color: var(--ink);
                 font-family: "Trebuchet MS", "Avenir Next", sans-serif;
             }
@@ -89,6 +90,12 @@ def inject_styles():
                 padding: 28px 30px;
                 box-shadow: 0 20px 45px rgba(34, 48, 42, 0.12);
                 margin-bottom: 1rem;
+                transition: transform 0.35s ease, box-shadow 0.35s ease;
+                animation: fadeSlideIn 0.8s ease forwards;
+            }
+            .hero-shell:hover {
+                transform: translateY(-4px);
+                box-shadow: 0 26px 54px rgba(34, 48, 42, 0.2);
             }
             .hero-kicker {
                 color: #d6e7dd;
@@ -115,6 +122,11 @@ def inject_styles():
                 min-height: 136px;
                 box-shadow: 0 10px 30px rgba(73, 77, 71, 0.08);
                 backdrop-filter: blur(4px);
+                transition: transform 0.28s ease, box-shadow 0.28s ease, border-top-color 0.28s ease;
+            }
+            .stat-card:hover {
+                transform: translateY(-6px) scale(1.015);
+                box-shadow: 0 20px 42px rgba(73, 77, 71, 0.18);
             }
             .stat-label {
                 color: var(--muted);
@@ -142,6 +154,13 @@ def inject_styles():
                 padding: 18px 20px;
                 box-shadow: 0 10px 30px rgba(73, 77, 71, 0.08);
                 margin-bottom: 1rem;
+                border: 1px solid rgba(51, 92, 75, 0.08);
+                transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
+            }
+            .panel-card:hover {
+                transform: translateY(-5px);
+                box-shadow: 0 18px 34px rgba(73, 77, 71, 0.15);
+                border-color: rgba(51, 92, 75, 0.22);
             }
             .insight-card {
                 background: #fffdfa;
@@ -150,12 +169,22 @@ def inject_styles():
                 padding: 14px 16px;
                 margin-bottom: 0.8rem;
                 box-shadow: 0 8px 22px rgba(73, 77, 71, 0.06);
+                transition: transform 0.26s ease, box-shadow 0.26s ease;
+            }
+            .insight-card:hover {
+                transform: translateX(3px);
+                box-shadow: 0 12px 28px rgba(73, 77, 71, 0.12);
             }
             .prediction-card {
                 border-radius: 20px;
                 padding: 22px;
                 color: #1f2522;
                 box-shadow: 0 14px 35px rgba(73, 77, 71, 0.1);
+                transition: transform 0.28s ease, box-shadow 0.28s ease;
+            }
+            .prediction-card:hover {
+                transform: translateY(-4px);
+                box-shadow: 0 18px 42px rgba(73, 77, 71, 0.16);
             }
             .section-caption {
                 color: var(--muted);
@@ -167,9 +196,24 @@ def inject_styles():
                 border: 1px solid rgba(51, 92, 75, 0.08);
                 padding: 12px 14px;
                 border-radius: 16px;
+                transition: transform 0.24s ease, box-shadow 0.24s ease;
+            }
+            div[data-testid="stMetric"]:hover {
+                transform: translateY(-3px);
+                box-shadow: 0 10px 24px rgba(73, 77, 71, 0.12);
             }
             div[data-testid="stSidebar"] {
                 background: linear-gradient(180deg, #f6efe3 0%, #efe5d3 100%);
+            }
+            div[data-testid="stVegaLiteChart"] {
+                border-radius: 14px;
+                border: 1px solid rgba(51, 92, 75, 0.1);
+                background: rgba(255, 253, 250, 0.88);
+                padding: 8px 10px 2px 10px;
+            }
+            @keyframes fadeSlideIn {
+                0% { opacity: 0; transform: translateY(14px); }
+                100% { opacity: 1; transform: translateY(0); }
             }
         </style>
         """,
@@ -194,6 +238,90 @@ def render_insight(message: str):
     st.markdown(f"<div class='insight-card'>{message}</div>", unsafe_allow_html=True)
 
 
+def build_future_watchlist(summary_df: pd.DataFrame) -> pd.DataFrame:
+    if 2025 not in set(summary_df["Year"].tolist()):
+        return pd.DataFrame(columns=["City", "AQI 2025", "Change vs 2024", "Risk"])
+
+    current = summary_df[summary_df["Year"] == 2025][["City", "AQI"]].rename(columns={"AQI": "AQI 2025"})
+    previous = summary_df[summary_df["Year"] == 2024][["City", "AQI"]].rename(columns={"AQI": "AQI 2024"})
+    merged = current.merge(previous, on="City", how="left")
+    merged["Change vs 2024"] = merged["AQI 2025"] - merged["AQI 2024"]
+
+    def risk_label(value: float) -> str:
+        if value <= 100:
+            return "Low"
+        if value <= 200:
+            return "Medium"
+        if value <= 300:
+            return "High"
+        return "Critical"
+
+    merged["Risk"] = merged["AQI 2025"].apply(risk_label)
+    return merged.sort_values("AQI 2025", ascending=False).reset_index(drop=True)
+
+
+def evaluate_exposure_plan(
+    aqi: float,
+    activity: str,
+    outdoor_hours: float,
+    sensitive_group: bool,
+    mask_used: bool,
+) -> dict:
+    activity_factor = {
+        "Daily commute": 1.0,
+        "Walking": 1.1,
+        "Cycling": 1.25,
+        "Outdoor sports": 1.4,
+        "Outdoor work": 1.55,
+    }.get(activity, 1.0)
+
+    score = aqi * outdoor_hours * activity_factor
+    if sensitive_group:
+        score *= 1.25
+    if mask_used:
+        score *= 0.86
+
+    if score <= 130:
+        return {
+            "label": "Low exposure risk",
+            "color": "#2e8b57",
+            "message": "Routine outdoor plans are generally safe with normal care.",
+            "steps": [
+                "Keep hydration and follow normal commute plans.",
+                "Track AQI updates once or twice during the day.",
+            ],
+        }
+    if score <= 260:
+        return {
+            "label": "Moderate exposure risk",
+            "color": "#d28b17",
+            "message": "Outdoor exposure should be managed with time and activity control.",
+            "steps": [
+                "Reduce high-intensity outdoor activity duration.",
+                "Prefer cleaner travel windows and carry a quality mask.",
+            ],
+        }
+    if score <= 420:
+        return {
+            "label": "High exposure risk",
+            "color": "#cc5a2f",
+            "message": "Limit prolonged outdoor time and protect vulnerable people.",
+            "steps": [
+                "Shift exercise or heavy activity indoors.",
+                "Use masks consistently and keep indoor air filtration active.",
+            ],
+        }
+    return {
+        "label": "Critical exposure risk",
+        "color": "#9a3d3d",
+        "message": "Outdoor exposure should be minimized as much as possible.",
+        "steps": [
+            "Avoid non-essential outdoor trips, especially for sensitive groups.",
+            "Follow emergency-level air quality precautions and indoor protection.",
+        ],
+    }
+
+
 def format_delta(delta: float | None, lower_is_better: bool = True) -> str:
     if delta is None:
         return "No previous-year record"
@@ -204,38 +332,44 @@ def format_delta(delta: float | None, lower_is_better: bool = True) -> str:
 def build_trend_chart(summary_df: pd.DataFrame, selected_city: str, compare_city: str | None):
     national_trend = summary_df.groupby("Year", as_index=False)["AQI"].mean()
     city_trend = summary_df[summary_df["City"] == selected_city].sort_values("Year")
-
-    fig, ax = plt.subplots(figsize=(8.2, 4.6))
-    ax.plot(city_trend["Year"], city_trend["AQI"], marker="o", linewidth=3, color="#c76d3c", label=selected_city)
-    ax.plot(
-        national_trend["Year"],
-        national_trend["AQI"],
-        marker="o",
-        linewidth=2.2,
-        linestyle="--",
-        color="#335c4b",
-        label="National city average",
-    )
+    lines = [
+        city_trend.assign(Series=selected_city),
+        national_trend.assign(Series="National city average"),
+    ]
+    color_domain = [selected_city, "National city average"]
+    color_range = ["#c76d3c", "#335c4b"]
 
     if compare_city:
         compare_trend = summary_df[summary_df["City"] == compare_city].sort_values("Year")
-        ax.plot(
-            compare_trend["Year"],
-            compare_trend["AQI"],
-            marker="o",
-            linewidth=2.4,
-            color="#8aa37b",
-            label=compare_city,
-        )
+        lines.append(compare_trend.assign(Series=compare_city))
+        color_domain.append(compare_city)
+        color_range.append("#8aa37b")
 
-    ax.set_title("Historical AQI trajectory")
-    ax.set_xlabel("Year")
-    ax.set_ylabel("Average AQI")
-    ax.grid(alpha=0.25)
-    ax.legend(frameon=False)
-    fig.patch.set_facecolor("#fffdfa")
-    ax.set_facecolor("#fffdfa")
-    return fig
+    chart_df = pd.concat(lines, ignore_index=True)
+    hover = alt.selection_point(fields=["Year"], nearest=True, on="pointerover", empty=False)
+
+    line = (
+        alt.Chart(chart_df)
+        .mark_line(strokeWidth=3)
+        .encode(
+            x=alt.X("Year:Q", title="Year", axis=alt.Axis(format="d", tickMinStep=1)),
+            y=alt.Y("AQI:Q", title="Average AQI"),
+            color=alt.Color("Series:N", scale=alt.Scale(domain=color_domain, range=color_range)),
+            tooltip=[
+                alt.Tooltip("Series:N", title="Series"),
+                alt.Tooltip("Year:Q", format=".0f"),
+                alt.Tooltip("AQI:Q", format=".1f"),
+            ],
+        )
+    )
+    points = line.mark_circle(size=85).transform_filter(hover)
+    rules = (
+        alt.Chart(chart_df)
+        .mark_rule(color="#44514b", strokeDash=[4, 3], opacity=0.4)
+        .encode(x=alt.X("Year:Q", axis=alt.Axis(format="d", tickMinStep=1)))
+        .transform_filter(hover)
+    )
+    return (line + points + rules).add_params(hover).properties(height=340, title="Historical AQI trajectory")
 
 
 def build_pollutant_profile_chart(selected_row: pd.Series, year_frame: pd.DataFrame):
@@ -246,50 +380,90 @@ def build_pollutant_profile_chart(selected_row: pd.Series, year_frame: pd.DataFr
             "Relative Level": [selected_row[feature] / max(national_profile[feature], 1.0) for feature in FEATURE_COLUMNS],
         }
     ).sort_values("Relative Level")
+    profile_df["Signal"] = profile_df["Relative Level"].apply(lambda value: "Above baseline" if value > 1 else "Below baseline")
 
-    colors = ["#c76d3c" if value > 1 else "#8aa37b" for value in profile_df["Relative Level"]]
-
-    fig, ax = plt.subplots(figsize=(7.6, 4.4))
-    ax.barh(profile_df["Pollutant"], profile_df["Relative Level"], color=colors)
-    ax.axvline(1.0, color="#335c4b", linestyle="--", linewidth=1.5)
-    ax.set_title("Pollutant fingerprint vs same-year national profile")
-    ax.set_xlabel("Relative intensity")
-    ax.set_ylabel("")
-    ax.grid(axis="x", alpha=0.2)
-    fig.patch.set_facecolor("#fffdfa")
-    ax.set_facecolor("#fffdfa")
-    return fig, profile_df.sort_values("Relative Level", ascending=False)
+    bars = (
+        alt.Chart(profile_df)
+        .mark_bar(cornerRadiusEnd=4)
+        .encode(
+            y=alt.Y("Pollutant:N", sort=profile_df["Pollutant"].tolist(), title=""),
+            x=alt.X("Relative Level:Q", title="Relative intensity"),
+            color=alt.Color(
+                "Signal:N",
+                scale=alt.Scale(domain=["Above baseline", "Below baseline"], range=["#c76d3c", "#8aa37b"]),
+                legend=alt.Legend(title="Level"),
+            ),
+            tooltip=[
+                alt.Tooltip("Pollutant:N"),
+                alt.Tooltip("Relative Level:Q", format=".2f"),
+                alt.Tooltip("Signal:N"),
+            ],
+        )
+    )
+    rule = alt.Chart(pd.DataFrame({"Benchmark": [1.0]})).mark_rule(color="#335c4b", strokeDash=[7, 4]).encode(x="Benchmark:Q")
+    chart = (bars + rule).properties(height=300, title="Pollutant fingerprint vs same-year national profile")
+    return chart, profile_df.sort_values("Relative Level", ascending=False)
 
 
 def build_level_chart(load_df: pd.DataFrame):
     chart_df = load_df.sort_values("Value")
-    positions = range(len(chart_df))
-
-    fig, ax = plt.subplots(figsize=(7.8, 4.6))
-    ax.barh([pos - 0.18 for pos in positions], chart_df["Baseline"], height=0.34, color="#8aa37b", label="City-year baseline")
-    ax.barh([pos + 0.18 for pos in positions], chart_df["Value"], height=0.34, color="#c76d3c", label="Current input")
-    ax.set_yticks(list(positions))
-    ax.set_yticklabels(chart_df["Pollutant"])
-    ax.set_title("Current pollutant inputs vs selected-city baseline")
-    ax.set_xlabel("Concentration")
-    ax.grid(axis="x", alpha=0.22)
-    ax.legend(frameon=False)
-    fig.patch.set_facecolor("#fffdfa")
-    ax.set_facecolor("#fffdfa")
-    return fig
+    pollutant_order = chart_df["Pollutant"].tolist()
+    points_df = chart_df.melt(
+        id_vars="Pollutant",
+        value_vars=["Baseline", "Value"],
+        var_name="Type",
+        value_name="Concentration",
+    )
+    lines = (
+        alt.Chart(chart_df)
+        .mark_rule(color="#d4ddd8", strokeWidth=3)
+        .encode(
+            y=alt.Y("Pollutant:N", sort=pollutant_order, title=""),
+            x=alt.X("Baseline:Q", title="Concentration"),
+            x2=alt.X2("Value:Q"),
+            tooltip=[
+                alt.Tooltip("Pollutant:N"),
+                alt.Tooltip("Baseline:Q", format=".2f"),
+                alt.Tooltip("Value:Q", format=".2f"),
+            ],
+        )
+    )
+    points = (
+        alt.Chart(points_df)
+        .mark_circle(size=120)
+        .encode(
+            y=alt.Y("Pollutant:N", sort=pollutant_order, title=""),
+            x=alt.X("Concentration:Q", title="Concentration"),
+            color=alt.Color(
+                "Type:N",
+                scale=alt.Scale(domain=["Baseline", "Value"], range=["#8aa37b", "#c76d3c"]),
+                legend=alt.Legend(title="Profile"),
+            ),
+            tooltip=[
+                alt.Tooltip("Pollutant:N"),
+                alt.Tooltip("Type:N"),
+                alt.Tooltip("Concentration:Q", format=".2f"),
+            ],
+        )
+    )
+    return (lines + points).properties(height=320, title="Current pollutant inputs vs selected-city baseline")
 
 
 def build_importance_chart(importance_df: pd.DataFrame):
     chart_df = importance_df.sort_values("Importance")
-
-    fig, ax = plt.subplots(figsize=(7.5, 4.4))
-    ax.barh(chart_df["Pollutant"], chart_df["Importance"], color="#335c4b")
-    ax.set_title("Model feature importance")
-    ax.set_xlabel("Importance score")
-    ax.grid(axis="x", alpha=0.2)
-    fig.patch.set_facecolor("#fffdfa")
-    ax.set_facecolor("#fffdfa")
-    return fig
+    return (
+        alt.Chart(chart_df)
+        .mark_bar(cornerRadiusEnd=5, color="#335c4b")
+        .encode(
+            y=alt.Y("Pollutant:N", sort=chart_df["Pollutant"].tolist(), title=""),
+            x=alt.X("Importance:Q", title="Importance score"),
+            tooltip=[
+                alt.Tooltip("Pollutant:N"),
+                alt.Tooltip("Importance:Q", format=".4f"),
+            ],
+        )
+        .properties(height=300, title="Model feature importance")
+    )
 
 
 def build_correlation_chart(df: pd.DataFrame):
@@ -302,16 +476,24 @@ def build_correlation_chart(df: pd.DataFrame):
         .rename(columns={"index": "Pollutant", "AQI": "Correlation"})
     )
 
-    colors = ["#c76d3c" if value > 0 else "#8aa37b" for value in corr_df["Correlation"]]
-
-    fig, ax = plt.subplots(figsize=(7.5, 4.4))
-    ax.barh(corr_df["Pollutant"], corr_df["Correlation"], color=colors)
-    ax.set_title("Correlation of pollutants with AQI")
-    ax.set_xlabel("Pearson correlation")
-    ax.grid(axis="x", alpha=0.2)
-    fig.patch.set_facecolor("#fffdfa")
-    ax.set_facecolor("#fffdfa")
-    return fig
+    return (
+        alt.Chart(corr_df)
+        .mark_bar(cornerRadiusEnd=5)
+        .encode(
+            y=alt.Y("Pollutant:N", sort=corr_df["Pollutant"].tolist(), title=""),
+            x=alt.X("Correlation:Q", title="Pearson correlation"),
+            color=alt.condition(
+                alt.datum.Correlation > 0,
+                alt.value("#c76d3c"),
+                alt.value("#8aa37b"),
+            ),
+            tooltip=[
+                alt.Tooltip("Pollutant:N"),
+                alt.Tooltip("Correlation:Q", format=".3f"),
+            ],
+        )
+        .properties(height=300, title="Correlation of pollutants with AQI")
+    )
 
 
 def build_category_distribution(summary_df: pd.DataFrame):
@@ -326,15 +508,27 @@ def build_category_distribution(summary_df: pd.DataFrame):
         }
     )
 
-    fig, ax = plt.subplots(figsize=(7.4, 4.2))
-    ax.bar(counts["Category"], counts["Count"], color=["#2e8b57", "#87a330", "#d28b17", "#cc5a2f", "#9a3d3d", "#5a2a2a"])
-    ax.set_title("Distribution of city-year AQI categories")
-    ax.set_ylabel("Number of city-year records")
-    ax.tick_params(axis="x", rotation=20)
-    ax.grid(axis="y", alpha=0.2)
-    fig.patch.set_facecolor("#fffdfa")
-    ax.set_facecolor("#fffdfa")
-    return fig
+    return (
+        alt.Chart(counts)
+        .mark_bar(cornerRadiusTopLeft=5, cornerRadiusTopRight=5)
+        .encode(
+            x=alt.X("Category:N", sort=ordered_categories, axis=alt.Axis(labelAngle=20)),
+            y=alt.Y("Count:Q", title="Number of city-year records"),
+            color=alt.Color(
+                "Category:N",
+                scale=alt.Scale(
+                    domain=ordered_categories,
+                    range=["#2e8b57", "#87a330", "#d28b17", "#cc5a2f", "#9a3d3d", "#5a2a2a"],
+                ),
+                legend=None,
+            ),
+            tooltip=[
+                alt.Tooltip("Category:N"),
+                alt.Tooltip("Count:Q", format=".0f"),
+            ],
+        )
+        .properties(height=280, title="Distribution of city-year AQI categories")
+    )
 
 
 def render_prediction_card(prediction: dict):
@@ -403,12 +597,12 @@ if compare_city:
 st.markdown(
     f"""
     <div class="hero-shell">
-        <div class="hero-kicker">Final Review Dashboard Upgrade</div>
-        <div class="hero-title">AQI Monitoring System v2</div>
+        <div class="hero-kicker">Practical Air Quality Intelligence</div>
+        <div class="hero-title">AQI Monitoring System</div>
         <div class="hero-copy">
             A polished forecasting and analytics workspace for Indian city air quality data.
-            This version adds benchmarking, prediction confidence, mitigation simulation, and model analytics
-            so the project feels closer to a deployable decision-support system than a single-output demo.
+            The platform combines benchmarking, prediction confidence, mitigation simulation, and practical
+            exposure planning so the project behaves like a decision-support system, not just a predictor.
         </div>
     </div>
     """,
@@ -445,14 +639,15 @@ with hero_cols[3]:
     )
     render_stat_card("Peer benchmark", compare_city or "Not set", compare_subtitle, "#aa8f5d")
 
-with st.expander("What changed in version 2"):
+with st.expander("System highlights"):
     st.write(
         """
         - Multi-section dashboard with city intelligence, live prediction lab, and model analytics.
-        - New peer benchmarking using national average, city ranks, and side-by-side trend comparison.
+        - Peer benchmarking using national average, city ranks, and side-by-side trend comparison.
         - Prediction confidence band derived from the Random Forest ensemble spread.
-        - Scenario simulator that estimates AQI improvement after pollutant reduction actions.
-        - Cleaner code structure with reusable AQI utility functions and cached data/model loading.
+        - Mitigation simulator that estimates AQI improvement after pollutant reduction actions.
+        - Practical daily exposure planner for real-life decisions.
+        - Expanded dataset coverage from 2015 to 2025.
         """
     )
 
@@ -468,15 +663,13 @@ with overview_tab:
     with chart_col:
         st.markdown("<div class='panel-card'>", unsafe_allow_html=True)
         trend_fig = build_trend_chart(summary_df, selected_city, compare_city)
-        st.pyplot(trend_fig, use_container_width=True)
-        plt.close(trend_fig)
+        st.altair_chart(trend_fig, use_container_width=True)
         st.markdown("</div>", unsafe_allow_html=True)
 
     with profile_col:
         st.markdown("<div class='panel-card'>", unsafe_allow_html=True)
         profile_fig, profile_df = build_pollutant_profile_chart(selected_row, year_frame)
-        st.pyplot(profile_fig, use_container_width=True)
-        plt.close(profile_fig)
+        st.altair_chart(profile_fig, use_container_width=True)
         st.markdown("</div>", unsafe_allow_html=True)
 
     insight_col, leaderboard_col = st.columns((1, 1))
@@ -510,10 +703,21 @@ with overview_tab:
         left_table, right_table = st.columns(2)
         with left_table:
             st.markdown("**Most polluted cities**")
-            st.dataframe(top_polluted, hide_index=True, use_container_width=True)
+            st.dataframe(top_polluted, hide_index=True, width="stretch")
         with right_table:
             st.markdown("**Cleanest cities**")
-            st.dataframe(cleanest, hide_index=True, use_container_width=True)
+            st.dataframe(cleanest, hide_index=True, width="stretch")
+
+    st.markdown("### 2025 practical watchlist")
+    watchlist_df = build_future_watchlist(summary_df)
+    if not watchlist_df.empty:
+        watchlist_display = watchlist_df.head(10).copy()
+        watchlist_display["AQI 2025"] = watchlist_display["AQI 2025"].round(1)
+        watchlist_display["Change vs 2024"] = watchlist_display["Change vs 2024"].round(1)
+        st.dataframe(watchlist_display, hide_index=True, width="stretch")
+        st.caption("This watchlist helps prioritize cities where intervention is most urgent for upcoming planning cycles.")
+    else:
+        st.info("Year 2025 data is not available yet.")
 
 with prediction_tab:
     st.subheader("Interactive prediction lab")
@@ -582,8 +786,7 @@ with prediction_tab:
     with chart_col:
         st.markdown("<div class='panel-card'>", unsafe_allow_html=True)
         levels_fig = build_level_chart(load_df)
-        st.pyplot(levels_fig, use_container_width=True)
-        plt.close(levels_fig)
+        st.altair_chart(levels_fig, use_container_width=True)
         st.markdown("</div>", unsafe_allow_html=True)
 
     with scenario_col:
@@ -594,11 +797,55 @@ with prediction_tab:
         st.dataframe(
             scenario_display,
             hide_index=True,
-            use_container_width=True,
+            width="stretch",
         )
         st.caption(
             "The simulator reduces one pollutant at a time so you can explain which intervention offers the highest AQI improvement."
         )
+
+    st.markdown("### Practical daily exposure planner")
+    planner_col_1, planner_col_2, planner_col_3, planner_col_4 = st.columns(4)
+    planned_activity = planner_col_1.selectbox(
+        "Planned activity",
+        ["Daily commute", "Walking", "Cycling", "Outdoor sports", "Outdoor work"],
+    )
+    planned_hours = planner_col_2.slider("Outdoor duration (hours)", min_value=0.5, max_value=12.0, value=2.0, step=0.5)
+    sensitive_group = planner_col_3.selectbox("Sensitive person involved?", ["No", "Yes"]) == "Yes"
+    mask_used = planner_col_4.selectbox("Mask planned?", ["Yes", "No"]) == "Yes"
+
+    exposure = evaluate_exposure_plan(
+        aqi=prediction["aqi"],
+        activity=planned_activity,
+        outdoor_hours=planned_hours,
+        sensitive_group=sensitive_group,
+        mask_used=mask_used,
+    )
+
+    st.markdown(
+        f"""
+        <div class="prediction-card" style="background: #fffdfa; border-left: 8px solid {exposure['color']};">
+            <div class="stat-label" style="color:#45544d;">Exposure planning result</div>
+            <div style="font-size:1.6rem; font-weight:700; color:{exposure['color']};">{exposure['label']}</div>
+            <div style="margin-top:0.5rem;">{exposure['message']}</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+    st.markdown(f"- {exposure['steps'][0]}")
+    st.markdown(f"- {exposure['steps'][1]}")
+
+    st.markdown("### Intervention priority matrix")
+    importance_df = benchmark["feature_importance"].copy()
+    priority_df = load_df.merge(importance_df, left_on="Pollutant", right_on="Pollutant", how="left")
+    max_importance = priority_df["Importance"].max() if not priority_df["Importance"].empty else 1.0
+    priority_df["Priority Score"] = priority_df["Relative Load"] * (priority_df["Importance"] / max(max_importance, 1e-9))
+    priority_display = priority_df[["Pollutant", "Relative Load", "Importance", "Priority Score"]].copy()
+    priority_display["Relative Load"] = priority_display["Relative Load"].round(2)
+    priority_display["Importance"] = priority_display["Importance"].round(3)
+    priority_display["Priority Score"] = priority_display["Priority Score"].round(3)
+    priority_display = priority_display.sort_values("Priority Score", ascending=False)
+    st.dataframe(priority_display, hide_index=True, width="stretch")
+    st.caption("Higher priority score means the pollutant is both elevated and strongly influential in AQI prediction.")
 
 with analytics_tab:
     st.subheader("Model and dataset analytics")
@@ -614,23 +861,20 @@ with analytics_tab:
     with model_col:
         st.markdown("<div class='panel-card'>", unsafe_allow_html=True)
         importance_fig = build_importance_chart(benchmark["feature_importance"])
-        st.pyplot(importance_fig, use_container_width=True)
-        plt.close(importance_fig)
+        st.altair_chart(importance_fig, use_container_width=True)
         st.markdown("</div>", unsafe_allow_html=True)
 
     with corr_col:
         st.markdown("<div class='panel-card'>", unsafe_allow_html=True)
         corr_fig = build_correlation_chart(df)
-        st.pyplot(corr_fig, use_container_width=True)
-        plt.close(corr_fig)
+        st.altair_chart(corr_fig, use_container_width=True)
         st.markdown("</div>", unsafe_allow_html=True)
 
     dist_col, notes_col = st.columns((1.1, 0.9))
     with dist_col:
         st.markdown("<div class='panel-card'>", unsafe_allow_html=True)
         dist_fig = build_category_distribution(summary_df)
-        st.pyplot(dist_fig, use_container_width=True)
-        plt.close(dist_fig)
+        st.altair_chart(dist_fig, use_container_width=True)
         st.markdown("</div>", unsafe_allow_html=True)
 
     with notes_col:

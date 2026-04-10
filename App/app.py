@@ -19,12 +19,12 @@ def main():
 
     df = pd.read_csv(DATA_PATH)
     summary = build_city_year_summary(df)
-    profile = get_reference_profile(summary, "Delhi", 2020)
+    profile = get_reference_profile(summary, "Delhi", 2025)
     model = joblib.load(MODEL_PATH)
     result = predict_aqi(model, profile)
 
-    print("AQI Monitoring System v2 CLI smoke test")
-    print(f"Sample city-year: Delhi 2020")
+    print("AQI Monitoring System CLI smoke test")
+    print(f"Sample city-year: Delhi 2025")
     print(f"Predicted AQI: {result['aqi']:.2f}")
     print(f"Category: {result['category']}")
     print(f"Confidence: {result['confidence']}")
