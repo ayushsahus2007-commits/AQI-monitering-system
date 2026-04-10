@@ -1,152 +1,143 @@
+# Air Quality Index (AQI) Monitoring System v2
 
+An upgraded machine learning dashboard that predicts Air Quality Index (AQI), benchmarks city pollution trends, and simulates pollutant-reduction scenarios for final project review demonstrations.
 
-<h1 align="center">🌍 Air Quality Index (AQI) Prediction System</h1>
+## What Is New In v2
 
-<p align="center">
-A Machine Learning–based Air Quality Management System that predicts AQI using historical pollutant data and presents meaningful insights through an interactive web application.
-</p>
+- Redesigned Streamlit dashboard with a cleaner review-ready interface
+- City intelligence section with AQI rank, year-over-year change, and same-year leaderboard
+- Interactive prediction lab with live pollutant inputs
+- Prediction confidence band using Random Forest ensemble spread
+- Mitigation simulator to estimate AQI improvement after reducing major pollutants
+- Model analytics section with RMSE, R², feature importance, and pollutant correlation views
+- Refactored AQI utility layer for cleaner reusable logic
 
-<hr>
+## Project Objective
 
-<h2>📌 Project Overview</h2>
-<ul>
-  <li>Predict AQI using historical air pollution data</li>
-  <li>Classify AQI into standard categories</li>
-  <li>Provide health advisory messages</li>
-  <li>Show year-based and city-wise analysis</li>
-  <li>Interactive Streamlit web application</li>
-</ul>
+This project uses historical pollutant data from Indian cities to:
 
-<hr>
+- Predict AQI using a machine learning model
+- Classify air quality into standard AQI categories
+- Provide health advisory guidance
+- Compare pollution trends across cities and years
+- Support decision-making through analytics and scenario testing
 
-<h2>🚀 System Workflow</h2>
-<ol>
-  <li>User selects a <b>City</b></li>
-  <li>User selects a <b>Year</b></li>
-  <li>System retrieves historical pollutant data</li>
-  <li>Machine Learning model predicts AQI</li>
-  <li>Displays:
-    <ul>
-      <li>AQI Value</li>
-      <li>AQI Category</li>
-      <li>Health Advisory Message</li>
-      <li>Visual Insights & Trends</li>
-    </ul>
-  </li>
-</ol>
+## Core Features
 
-<hr>
+### 1. City Intelligence Dashboard
+- Select a city and year
+- View average AQI and AQI category
+- Compare against national city average
+- Track historical AQI trends
+- Benchmark against another city
+- View most polluted and cleanest cities for the selected year
 
-<h2>📊 AQI Category Standard</h2>
+### 2. Prediction Lab
+- Enter pollutant values for PM2.5, PM10, NO2, NH3, CO, SO2, and O3
+- Generate AQI prediction instantly
+- View AQI category and health advisory
+- Inspect prediction confidence range
+- Compare current inputs against the selected city baseline
 
-<table border="1" cellpadding="8">
-<tr>
-<th>AQI Range</th>
-<th>Category</th>
-</tr>
-<tr><td>0–50</td><td>Good</td></tr>
-<tr><td>51–100</td><td>Satisfactory</td></tr>
-<tr><td>101–200</td><td>Moderate</td></tr>
-<tr><td>201–300</td><td>Poor</td></tr>
-<tr><td>301–400</td><td>Very Poor</td></tr>
-<tr><td>401–500</td><td>Severe</td></tr>
-</table>
+### 3. Mitigation Simulator
+- Reduce one pollutant at a time by a chosen percentage
+- Estimate how much AQI improves after intervention
+- Identify the strongest pollutant target for action
 
-<hr>
+### 4. Model Analytics
+- Benchmark Random Forest performance on train-test split
+- View feature importance scores
+- Inspect pollutant correlation with AQI
+- Analyze AQI category distribution across city-year records
 
-<h2>✨ Key Features</h2>
-<ul>
-  <li>City-based AQI Prediction</li>
-  <li>Year-based AQI Analysis</li>
-  <li>AQI Category Classification</li>
-  <li>Health Impact Messages</li>
-  <li>City-wise Pollution Trends</li>
-  <li>Interactive Web Interface (Streamlit)</li>
-</ul>
+## AQI Category Standard
 
-<hr>
+| AQI Range | Category |
+| --- | --- |
+| 0-50 | Good |
+| 51-100 | Satisfactory |
+| 101-200 | Moderate |
+| 201-300 | Poor |
+| 301-400 | Very Poor |
+| 401+ | Severe |
 
-<h2>🛠 Technology Stack</h2>
-<ul>
-  <li><b>Python</b></li>
-  <li>Pandas & NumPy</li>
-  <li>Scikit-learn (Machine Learning)</li>
-  <li>Streamlit (Web Application)</li>
-  <li>GitHub (Version Control)</li>
-</ul>
+## Technology Stack
 
-<hr>
+- Python
+- Pandas and NumPy
+- Scikit-learn
+- Joblib
+- Matplotlib
+- Streamlit
 
-<h2>🔄 Overall System Flow</h2>
+## Project Structure
 
-<pre>
-Historical Dataset
-        ↓
-Data Cleaning
-        ↓
-ML Model Training
-        ↓
-AQI Prediction
-        ↓
-AQI Categorization + Health Advisory
-        ↓
-Web Application Display
-        ↓
-Insights & Evaluation
-</pre>
-
-<hr>
-
-<h2>📂 Project Structure</h2>
-
-<pre>
-AQI-Prediction-System/
-│
-├── data/
+```text
+AQI-monitering-system/
+├── App/
+│   └── app.py
+├── Data/
 │   └── cleaned_air_quality.csv
-│
-├── notebooks/
-│   ├── data_cleaning.ipynb
-│   ├── model_training.ipynb
+├── Docs/
+│   ├── abstract.docx
+│   ├── project_report.docx
+│   ├── ppt.pptx
+│   └── viva_notes.txt
+├── Model/
+│   └── aqi_model.pkl
+├── Notebooks/
 │   ├── analysis.ipynb
-│   └── evaluation.ipynb
-│
-├── assets/
-│   └── graphs & images
-│
-├── app.py
-├── model.pkl
-├── aqi_utils.py
-└── README.md
-</pre>
+│   ├── data_cleaning.ipynb
+│   ├── evaluation.ipynb
+│   └── model_training.ipynb
+├── src/
+│   └── aqi_utils.py
+├── requirements.txt
+└── streamlit_app.py
+```
 
-<hr>
+## How To Run
 
-<h2>👥 Team Members</h2>
+1. Install dependencies:
 
-<table border="1" cellpadding="8">
-<tr>
-<th>Name</th>
-<th>Branch</th>
-<th>Role</th>
-</tr>
-<tr><td>Ayush</td><td>CSE Core</td><td>Team Lead & ML Model</td></tr>
-<tr><td>Avinash</td><td>EIE</td><td>Data Cleaning</td></tr>
-<tr><td>Rohith</td><td>ECE</td><td>Analysis & Insights</td></tr>
-<tr><td>Hiten</td><td>CSE DS</td><td>Web Application</td></tr>
-<tr><td>Rasika</td><td>CSE DS</td><td>AQI Logic & Integration</td></tr>
-</table>
+```bash
+pip install -r requirements.txt
+```
 
-<hr>
+2. Start the Streamlit app:
 
-<h2>📌 Project Statement</h2>
+```bash
+streamlit run streamlit_app.py
+```
 
-<p>
-"We are developing a machine-learning–based air quality management system that predicts AQI using historical pollutant data and presents year-based analysis and health insights through an interactive web application."
-</p>
+3. Open the local Streamlit URL in the browser.
 
-<hr>
+## Model Inputs
 
-<p align="center">
-⭐ If you like this project, consider giving it a star on GitHub!
-</p>
+The prediction model uses these pollutant features:
+
+- PM2.5
+- PM10
+- NO2
+- NH3
+- CO
+- SO2
+- O3
+
+## Review Talking Points
+
+If you want strong presentation points for viva or project review, focus on these:
+
+- The app is no longer only a predictor; it now behaves like a decision-support dashboard.
+- The system combines forecasting, benchmarking, and mitigation analysis in one interface.
+- Confidence range adds transparency to the machine learning prediction.
+- Feature importance and correlation plots help explain why the model behaves the way it does.
+- Scenario simulation makes the project more practical for environmental planning discussions.
+
+## Team
+
+- Ayush: Team Lead and ML Model
+- Avinash: Data Cleaning
+- Rohith: Analysis and Insights
+- Hiten: Web Application
+- Rasika: AQI Logic and Integration
